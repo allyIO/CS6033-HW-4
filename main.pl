@@ -81,18 +81,25 @@ notYetVisited(State, PathSoFar):-
 depthFirst(X, [X],_):- goal(X).
 
 % else expand X by Y and find path from Y
-depthFirst (X, [X|Ypath], VISITED):-
+depthFirst(X, [X|Ypath], VISITED):-
  	connect(X, Y),
   	% negmember(Y, VISITED), % replace negmember by notYetVisited 
                             % when using on the block world
 	notYetVisited(Y, VISITED),
-  	depthFirst (Y, FILLIN, [Y|VISITED]).
+  	depthFirst(Y, FILLIN, [Y|VISITED]).
 
 
 
 % For testing; sample start and goal states, data
 blocks([a, b, c, d, e, f]).
-start([[on, d, a], [on, a, c], [on, c, b], [on, b, “table”], [clear a]])
+start([[on, d, a], [on, a, c], [on, c, b], [on, b, "table"], [clear, a]]).
 goal([[on, b, "table"], [on, c, b], [on, a, c], [on, d, a]]).
 
-% To run: depthFirst(Start, , P),goal(X)? ... or something like that idk
+% To run: depthFirst(Start, , P),goal(X)? 
+
+% blocksWorld(Start, Goal, Path) holds when the state Start can go through set of
+% moves defined in Path to get to state Goal.
+blocksWorld(Start, Goal, Path):-
+	start(Start),
+	goal(Goal),
+	depthFirst(Start, Path, []).

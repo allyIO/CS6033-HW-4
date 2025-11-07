@@ -19,10 +19,18 @@ move(X, Y, Z, S1, S2):-
 
 						/* CODE HERE */
 
-% move(X, "table", Z S1, S2) holds when the state S2 is obtained from the state 
-%	S1 by moving the block X from the table onto block z.
-
-						/* CODE HERE */
+% move(X, "table", Y, S1, S2) holds when the state S2 is obtained from the state 
+move(X, "table", Y, S1, S2):-
+    member([clear, X], S1),         % Find a clear block X
+    member([on, X, "table"], S1),  % Find it on the table
+    member([clear, Y], S1), block(Y), % Find a clear block Y
+    notequal(X, Y),                 % Ensure they aren't the same
+    
+    % Action 1: X is not on table, it's on Y
+    substitute([on, X, "table"], [on, X, Y], S1, INT),
+    
+    % Action 2: Y is not clear any longer (remove this fact)
+    remove([clear, Y], INT, S2).
 
 
 
@@ -53,7 +61,11 @@ substitute(X, Y, [H|T], [H|T1]):-
 								element X was substituted by Y, producing the 
 								new list [H|T1]. */
 
-
+% remove(E, L, L1) holds when L1 is the list L without element E.
+remove(E, [E|T], T).
+remove(E, [H|T], [H|T1]):- 
+    notequal(E, H),
+    remove(E, T, T1).
 
 % there is a path from state S1 to state S2 when there is a move from S1 to S2.
 path(S1, S2):-

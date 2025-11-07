@@ -14,10 +14,16 @@ move(X, Y, Z, S1, S2):-
 	substitute([on, X, Y], [on, X, Z], S1, INT),  %remove X from Y, place it on Z
 	substitute([clear, Z], [clear, Y], INT, S2). % Z is no longer clear; Y is now clear
 
-% move(X, Y, "table", S1, S2) holds when the state S2 is obtained from the state 
+% move(X, Y, table, S1, S2) holds when the state S2 is obtained from the state 
 %	S1 by moving the block X from block Y to the table.
+move(X, Y, table, S1, S2):-
+	member([clear, X], S1), % find a clear block X in S1
+	member([on, X, Y], S1), block(Y), % find a block on which X sits
+	substitute([on, X, Y], [on, X, table], S1, INT),  % remove X from Y, place it on table
+	(  substitute([clear, table], [clear, Y], INT, S2) % checks if [clear, table] is present, replace it with [clear, Y]; if not, add [clear, Y]
+	;  S2 = [[clear, Y]|INT]
+	). % table is no longer clear in the conceptual model; Y becomes clear
 
-						/* CODE HERE */
 
 % move(X, "table", Y, S1, S2) holds when the state S2 is obtained from the state 
 move(X, "table", Y, S1, S2):-
@@ -93,18 +99,25 @@ notYetVisited(State, PathSoFar):-
 depthFirst(X, [X],_):- goal(X).
 
 % else expand X by Y and find path from Y
-depthFirst (X, [X|Ypath], VISITED):-
+depthFirst(X, [X|Ypath], VISITED):-
  	connect(X, Y),
   	% negmember(Y, VISITED), % replace negmember by notYetVisited 
                             % when using on the block world
 	notYetVisited(Y, VISITED),
-  	depthFirst (Y, FILLIN, [Y|VISITED]).
+  	depthFirst(Y, FILLIN, [Y|VISITED]).
 
 
 
 % For testing; sample start and goal states, data
 blocks([a, b, c, d, e, f]).
-start([[on, d, a], [on, a, c], [on, c, b], [on, b, “table”], [clear a]])
-goal([[on, b, "table"], [on, c, b], [on, a, c], [on, d, a]]).
+start([[on, d, a], [on, a, c], [on, c, b], [on, b, table], [clear a]])
+goal([[on, b, table], [on, c, b], [on, a, c], [on, d, a]]).
 
-% To run: depthFirst(Start, , P),goal(X)? ... or something like that idk
+% To run: depthFirst(Start, , P),goal(X)? 
+
+% blocksWorld(Start, Goal, Path) holds when the state Start can go through set of
+% moves defined in Path to get to state Goal.
+blocksWorld(Start, Goal, Path):-
+	start(Start),
+	goal(Goal),
+	depthFirst(Start, Path, []).

@@ -3,8 +3,6 @@ block(X):-
     blocks(BLOCKS),  % this extracts the list BLOCKS
     member(X, BLOCKS).
 
-
-
 % move(X, Y, Z, S1, S2) holds when the state S2 is obtained from the state S1 by 
 %	moving the block X from the block Y onto the block Z.
 move(X, Y, Z, S1, S2):-
@@ -17,23 +15,30 @@ move(X, Y, Z, S1, S2):-
 % move(X, Y, table, S1, S2) holds when the state S2 is obtained from the state 
 %	S1 by moving the block X from block Y to the table.
 move(X, Y, table, S1, S2):-
+	block(X),
 	member([clear, X], S1), % find a clear block X in S1
-	member([on, X, Y], S1), block(Y), % find a block on which X sits
+	member([on, X, Y], S1), block(Y), % find the block Y on which X sits in S1
+	notequal(X, Y),
+
+	% State that X is not longer on Y; it is now on the table
 	substitute([on, X, Y], [on, X, table], S1, INT),  % remove X from Y, place it on table
-	(  substitute([clear, table], [clear, Y], INT, S2) % checks if [clear, table] is present, replace it with [clear, Y]; if not, add [clear, Y]
-	;  S2 = [[clear, Y]|INT]
-	). % table is no longer clear in the conceptual model; Y becomes clear
+
+	% State that Y is now clear
+	S2 = [[clear, Y] | INT].
 
 
-% move(X, "table", Y, S1, S2) holds when the state S2 is obtained from the state 
-move(X, "table", Y, S1, S2):-
+% move(X, table, Y, S1, S2) holds when the state S2 is obtained from the state 
+% 	S1 by moving block X from the table to block Y
+move(X, table, Y, S1, S2):-
+	block(X),
+
     member([clear, X], S1),         % Find a clear block X
-    member([on, X, "table"], S1),  % Find it on the table
+    member([on, X, table], S1),  % Find it on the table
     member([clear, Y], S1), block(Y), % Find a clear block Y
     notequal(X, Y),                 % Ensure they aren't the same
     
     % Action 1: X is not on table, it's on Y
-    substitute([on, X, "table"], [on, X, Y], S1, INT),
+    substitute([on, X, table], [on, X, Y], S1, INT),
     
     % Action 2: Y is not clear any longer (remove this fact)
     remove([clear, Y], INT, S2).
@@ -75,7 +80,7 @@ remove(E, [H|T], [H|T1]):-
 
 % there is a path from state S1 to state S2 when there is a move from S1 to S2.
 path(S1, S2):-
-	move(X, Y, Z, S1, S2).
+	move(_, _, _, S1, S2).
 
 % connect is the symmetric version of path: states S1 and S2 are connected if 
 %	there is a path from S1 to S2 or a path from S2 to S1.
@@ -104,20 +109,23 @@ depthFirst(X, [X|Ypath], VISITED):-
   	% negmember(Y, VISITED), % replace negmember by notYetVisited 
                             % when using on the block world
 	notYetVisited(Y, VISITED),
-  	depthFirst(Y, FILLIN, [Y|VISITED]).
+  	depthFirst(Y, Ypath, [Y|VISITED]). % ALLY - REPLACED SECOND ARG 'FILLIN' WITH Ypath
 
 
 
 % For testing; sample start and goal states, data
 blocks([a, b, c, d, e, f]).
-start([[on, d, a], [on, a, c], [on, c, b], [on, b, table], [clear a]])
-goal([[on, b, table], [on, c, b], [on, a, c], [on, d, a]]).
+% start([[on, d, a], [on, a, c], [on, c, b], [on, b, table], [clear, a]]).
+% goal([[on, b, table], [on, c, b], [on, a, c], [on, d, a]]).
+
+start([[on, a, b], [clear, a], [on, b, table], [on, c, table], [clear, c]]).
+goal([[on, a, c], [clear, a], [on, b, table], [clear, b], [on, c, table]]).
+
 
 % To run: depthFirst(Start, , P),goal(X)? 
 
 % blocksWorld(Start, Goal, Path) holds when the state Start can go through set of
 % moves defined in Path to get to state Goal.
 blocksWorld(Start, Goal, Path):-
-	start(Start),
 	goal(Goal),
-	depthFirst(Start, Path, []).
+	depthFirst(Start, Path, _).

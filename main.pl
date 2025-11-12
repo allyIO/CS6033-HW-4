@@ -3,12 +3,31 @@ block(X):-
     blocks(BLOCKS),  % this extracts the list BLOCKS
     member(X, BLOCKS).
 
+% % constraint(C): C is a block world constraint that can appear in a state list.
+% % A statement of one fact in the block world.
+% constraint([on, X, Y]):-
+% 	block(X), block(Y), 
+% 	notequal(X, Y).
+% constraint([on, X, table]):-
+% 	block(X).
+% constraint([clear, X]):-
+% 	block(X).
+
+% % state(S): S is a state if it is a set of block world constraints
+% state([E]):-
+% 	constraint(E).
+% state([H|T]):-
+% 	constraint(H),
+% 	not(member(H, T)),
+% 	state(T).
+
+
 % move(X, Y, Z, S1, S2) holds when the state S2 is obtained from the state S1 by 
 %	moving the block X from the block Y onto the block Z.
 move(X, Y, Z, S1, S2):-
-	member([clear, X], S1), %find a clear block X in S1
+	member([clear, X], S1), block(X), %find a clear block X in S1
 	member([on, X, Y], S1), block(Y), %find a block on which X sits
-	member([clear, Z], S1), notequal(X, Z), %find another clear block, Z
+	member([clear, Z], S1), block(Z), notequal(X, Z), %find another clear block, Z
 	substitute([on, X, Y], [on, X, Z], S1, INT),  %remove X from Y, place it on Z
 	substitute([clear, Z], [clear, Y], INT, S2). % Z is no longer clear; Y is now clear
 
@@ -23,15 +42,15 @@ move(X, Y, table, S1, S2):-
 	% State that X is not longer on Y; it is now on the table
 	substitute([on, X, Y], [on, X, table], S1, INT),  % remove X from Y, place it on table
 
-	% State that Y is now clear
-	S2 = [[clear, Y] | INT].
+	% State that Y is now clear; add [clear, Y] to INT to get S2
+	remove([clear, Y], S2, INT).
+
 
 
 % move(X, table, Y, S1, S2) holds when the state S2 is obtained from the state 
 % 	S1 by moving block X from the table to block Y
 move(X, table, Y, S1, S2):-
 	block(X),
-
     member([clear, X], S1),         % Find a clear block X
     member([on, X, table], S1),  % Find it on the table
     member([clear, Y], S1), block(Y), % Find a clear block Y
@@ -49,14 +68,13 @@ move(X, table, Y, S1, S2):-
 %	not equal.  In other words, it fails when the arguments are equal and 
 %	otherwise succeeds.
 notequal(X, X):-!, fail. % fail, if equal. 
-% If this does not work, use notequal(X1,X2) := X1 \=X2.
+% If this does not work, use notequal(X1,X2) :- X1 \=X2.
 notequal(_, _).          % otherwise, succeed.
 
 
 
 % substitute (E, E1, OLD, NEW) holds when NEW is the list OLD in which E is 
 %	substituted by E1.  There are no duplicates in OLD or NEW.
-
 substitute(X, Y, [X|T], [Y|T]).  /* Here, the head X of [X|T] is substituted by 
 									Y to yield the list with the head Y to 
 									produce the list [Y|T].  The tails of OLD 
@@ -91,41 +109,44 @@ connect(S1, S2) :- path(S2, S1).
 
 % notYetVisited (State, PathSoFar): ensures that no State re-appears
 %   in the set of PathSoFar
+% notYetVisited(State, PathSoFar):-
+% 	permutation(State, PermuteState),
+% 	not(member(PermuteState, PathSoFar)).
+
 notYetVisited(State, PathSoFar):-
-	permutation(State, PermuteState),
-	not(member(PermuteState, PathSoFar)).
-
-
+	\+ (member(Visited, PathSoFar), permutation(State, Visited)).
 
 % depthFirst (Start, Path, PathSoFar): returns the 
 %   Path from the start to the goal state given the path so far.
 
 % Trivial: if X is the goal return X as the path from X to X.
 depthFirst(X, [X],_):- goal(X).
+depthFirst(X, [X], _):- goal(Y), permutation(X, Y).
 
 % else expand X by Y and find path from Y
 depthFirst(X, [X|Ypath], VISITED):-
- 	connect(X, Y),
+ 	path(X, Y),
   	% negmember(Y, VISITED), % replace negmember by notYetVisited 
                             % when using on the block world
 	notYetVisited(Y, VISITED),
-  	depthFirst(Y, Ypath, [Y|VISITED]). % ALLY - REPLACED SECOND ARG 'FILLIN' WITH Ypath
+  	depthFirst(Y, Ypath, [X|VISITED]). % ALLY - REPLACED SECOND ARG 'FILLIN' WITH Ypath
+
+
+% blocksWorld(Start, Goal, Path) holds when the state Start can go through set of
+% moves defined in Path to get to state Goal.
+blocksWorld(Start, Path):-
+	depthFirst(Start, Path, []).
 
 
 
 % For testing; sample start and goal states, data
-blocks([a, b, c, d, e, f]).
-% start([[on, d, a], [on, a, c], [on, c, b], [on, b, table], [clear, a]]).
-% goal([[on, b, table], [on, c, b], [on, a, c], [on, d, a]]).
 
-start([[on, a, b], [clear, a], [on, b, table], [on, c, table], [clear, c]]).
-goal([[on, a, c], [clear, a], [on, b, table], [clear, b], [on, c, table]]).
+% Test 1
+blocks([a, b, c, d]).
+start([[on, a, b], [on, b, table], [clear, a], [on, c, d], [on, d, table], [clear, c]]).
+goal([[on, b, table], [on, c, b], [on, a, c], [on, d, a]]).
 
-
-% To run: depthFirst(Start, , P),goal(X)? 
-
-% blocksWorld(Start, Goal, Path) holds when the state Start can go through set of
-% moves defined in Path to get to state Goal.
-blocksWorld(Start, Goal, Path):-
-	goal(Goal),
-	depthFirst(Start, Path, _).
+% % Test 2
+% blocks([a, b, c]).
+% start([[on, a, b], [clear, a], [on, b, table], [on, c, table], [clear, c]]).
+% goal([[on, a, c], [clear, a], [on, b, table], [clear, b], [on, c, table]]).
